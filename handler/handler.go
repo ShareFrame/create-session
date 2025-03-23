@@ -48,20 +48,30 @@ func HandleLogin(ctx context.Context, event models.LoginRequest) (*models.Sessio
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		logrus.WithFields(logrus.Fields{
-			"status": resp.StatusCode,
+			"status":   resp.StatusCode,
 			"response": string(body),
 		}).Error("Failed to authenticate with Bluesky API")
 		return nil, fmt.Errorf("failed to authenticate with Bluesky API: %s", string(body))
 	}
 
-	var sessionResp models.SessionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&sessionResp); err != nil {
+	var raw models.BskySessionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		logrus.Error("Failed to decode response body", err)
 		return nil, err
 	}
 
+	sessionResp := models.SessionResponse{
+		DID:            raw.DID,
+		Handle:         raw.Handle,
+		Email:          raw.Email,
+		EmailConfirmed: raw.EmailConfirmed,
+		AccessToken:    raw.AccessJwt,
+		RefreshToken:   raw.RefreshJwt,
+		Active:         raw.Active,
+	}
+
 	logrus.WithFields(logrus.Fields{
-		"DID": sessionResp.DID,
+		"DID":    sessionResp.DID,
 		"Handle": sessionResp.Handle,
 	}).Info("Login successful")
 	return &sessionResp, nil
